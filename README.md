@@ -24,6 +24,22 @@ patch activates three ioctls:
 3. `NEX_SDR_STOP_TRANSMISSION` (428) stops a transmission started using 
    `NEX_SDR_START_TRANSMISSION`.
 
+# Transmitting an Example Signal
+
+The directory `payload_generation` contains the MATLAB script `generate_frame.m` that generates
+a Wi-Fi beacon frame with SSID `MyCovertChannel`. The generated IQ samples are written to bash
+script that calls `nexutil` from the nexmon.org project to load the samples into the Wi-Fi 
+chip's Template RAM by using ioctls. You can either generate your own signals or use the
+example `myframe.sh` file for transmitting the generated Wi-Fi frame. To this end, follow the
+Getting Started instructions below to install our patched Wi-Fi firmware on a Nexus 5 smartphone.
+Then, you need to copy `myframe.sh` to a directory that allows execution (such as `/su/xbin/`).
+To load the samples and start a single transmission, simply executute the bash script and 
+observe the results by listening with a Wi-Fi sniffer on channel 1. A suitable Wireshark filter
+is `wlan.addr == 82:7b:be:f0:96:e0`. Of course, you are not limited to transmitting handcrafted
+Wi-Fi signals, you can transmit whatever you like in the 2.4 and 5 GHz bands. Nevertheless, you
+have to obey your local laws for transmitting signals, that might prohibit you to transmit any
+signal at all.
+
 # Extract from our License
 
 Any use of the Software which results in an academic publication or
@@ -84,7 +100,7 @@ The following steps will get you started on Xubuntu 16.04 LTS:
   Framework**. https://nexmon.org
 * Matthias Schulz, Jakob Link, Francesco Gringoli, and Matthias Hollick. **Shadow Wi-Fi: Teaching 
   Smartphones to Transmit Raw Signals and to Extract Channel State Information to Implement 
-  Practical Covert Channels over Wi-Fi. Accepted to appear in *Proceedings of the 16th ACM 
+  Practical Covert Channels over Wi-Fi**. Accepted to appear in *Proceedings of the 16th ACM 
   International Conference on Mobile Systems, Applications, and Services*, MobiSys 2018, June 2018.
 * Matthias Schulz. **Teaching Your Wireless Card New Tricks: Smartphone Performance and Security 
   Enhancements through Wi-Fi Firmware Modifications**. Dr.-Ing. thesis, Technische Universität
