@@ -27,7 +27,7 @@ patch activates three ioctls:
 # Transmitting an Example Signal
 
 The directory `payload_generation` contains the MATLAB script `generate_frame.m` that generates
-a Wi-Fi beacon frame with SSID `MyCovertChannel`. The generated IQ samples are written to bash
+a Wi-Fi beacon frame with SSID `MyCovertChannel`. The generated IQ samples are written to a bash
 script that calls `nexutil` from the nexmon.org project to load the samples into the Wi-Fi 
 chip's Template RAM by using ioctls. You can either generate your own signals or use the
 example `myframe.sh` file for transmitting the generated Wi-Fi frame. To this end, follow the
