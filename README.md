@@ -8,14 +8,18 @@ we patch the Wi-Fi firmware of BCM4339 devices installed in Nexus 5 smartphones.
 patch activates three ioctls:
 
 1. `NEX_WRITE_TEMPLATE_RAM` (426) writes arbitrary data into Template RAM that stores the raw
-   IQ samples that we may transmit. The ioctls payload contains (1) a uint32 value indicating
-   the offset where data should be written in Template RAM in bytes, (2) a uint32 value 
+   IQ samples that we may transmit. The ioctl's payload contains (1) an int32 value indicating
+   the offset where data should be written in Template RAM in bytes, (2) an int32 value 
    indicating the length of the data that should be written and (3) the IQ samples as array of
    IQ values, where I (inphase components) and Q (quadrature components) are stored as int16 
    numbers.
 
-2. `NEX_SDR_START_TRANSMISSION` (427) that triggers the transmission of IQ samples in an infinite 
-   loop.
+2. `NEX_SDR_START_TRANSMISSION` (427) that triggers the transmission of IQ samples. The ioctl's
+    payload contains (1) an int32 value indicating the number of samples to transmit, (2) an 
+    int32 value indicating the offset where the signal starts in Template RAM, (3) an int32 
+    value indicating a chanspec (channel number, bandwidth, band, ...), (4) an int32 value
+    indicating the power index (lower value means higher output power), and (5) an int32
+    value indicating whether to loop over the IQ samples or transmit them only once.
 
 3. `NEX_SDR_STOP_TRANSMISSION` (428) stops a transmission started using 
    `NEX_SDR_START_TRANSMISSION`.
