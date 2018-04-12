@@ -77,6 +77,7 @@
 
 #define PHYREF_SamplePlayStartPtr           u.d11acregs.SamplePlayStartPtr
 #define PHYREF_SamplePlayStopPtr            u.d11acregs.SamplePlayStopPtr
+#define PHYREF_SampleCollectPlayCtrl        u.d11acregs.SampleCollectPlayCtrl
 
 #define wreg32(r, v)        (*(volatile uint32*)(r) = (uint32)(v))
 #define wreg16(r, v)        (*(volatile uint16*)(r) = (uint16)(v))
@@ -181,17 +182,29 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
 
             if (params->endless) {
                 printf("aaaaaaaaaaaaaaaa\n");
+#if (NEXMON_CHIP == CHIP_VER_BCM4339)
                 W_REG(pi->sh->osh, &pi->regs->psm_phy_hdr_param, (1 << 11) | (1 << 1));
+#elif (NEXMON_CHIP == CHIP_VER_BCM43455c0)
+                W_REG(pi->sh->osh, &pi->regs->PHYREF_SampleCollectPlayCtrl, (1 << 9));
+#endif
             } else {
                 printf("bbbbbbbbbbbbbbbb\n");
+#if (NEXMON_CHIP == CHIP_VER_BCM4339)
                 W_REG(pi->sh->osh, &pi->regs->psm_phy_hdr_param, (1 << 12) | (1 << 11) | (1 << 1));
+#elif (NEXMON_CHIP == CHIP_VER_BCM43455c0)
+                W_REG(pi->sh->osh, &pi->regs->PHYREF_SampleCollectPlayCtrl, (1 << 9)); // need to find out which additional bit needs to be set to only transmit once
+#endif
                 if (CHSPEC_IS80(pi->radio_chanspec))
                     udelay(params->num_samps/160);
                 else if (CHSPEC_IS40(pi->radio_chanspec))
                     udelay(params->num_samps/80);
                 else
                     udelay(params->num_samps/40);
+#if (NEXMON_CHIP == CHIP_VER_BCM4339)
                 W_REG(pi->sh->osh, &pi->regs->psm_phy_hdr_param, 0);
+#elif (NEXMON_CHIP == CHIP_VER_BCM43455c0)
+                W_REG(pi->sh->osh, &pi->regs->PHYREF_SampleCollectPlayCtrl, 0);
+#endif
             }
 
             ret = IOCTL_SUCCESS;
@@ -216,4 +229,5 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
 }
 
 __attribute__((at(0x1F3488, "", CHIP_VER_BCM4339, FW_VER_6_37_32_RC23_34_43_r639704)))
+__attribute__((at(0x208F20, "", CHIP_VER_BCM43455c0, FW_VER_7_45_154)))
 GenericPatch4(wlc_ioctl_hook, wlc_ioctl_hook + 1);
