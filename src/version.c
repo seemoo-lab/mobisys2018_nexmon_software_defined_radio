@@ -63,26 +63,20 @@
 
 #pragma NEXMON targetregion "patch"
 
-#include <firmware_version.h>
-#include <wrapper.h>	// wrapper definitions for functions that already exist in the firmware
-#include <structs.h>	// structures that are used by the code in the firmware
-#include <patcher.h>
-#include <helper.h>
-#include <capabilities.h>      // capabilities included in a nexmon patch
+#include <firmware_version.h>   // definition of firmware version macros
+#include <patcher.h>            // macros used to craete patches such as BLPatch, BPatch, ...
 
-int capabilities = NEX_CAP_MONITOR_MODE | NEX_CAP_MONITOR_MODE_RADIOTAP | NEX_CAP_FRAME_INJECTION;
-
-// Hook the call to wlc_ucode_write in wlc_ucode_download
-__attribute__((at(WLC_UCODE_WRITE_BL_HOOK_ADDR, "", CHIP_VER_ALL, FW_VER_ALL)))
-BLPatch(wlc_ucode_write_compressed, wlc_ucode_write_compressed);
-
-__attribute__((at(HNDRTE_RECLAIM_0_END_PTR, "", CHIP_VER_ALL, FW_VER_ALL)))
-GenericPatch4(hndrte_reclaim_0_end, PATCHSTART);
-
-extern unsigned char templateram_bin[];
-
-// Moving template ram to another place in the ucode region
-#if TEMPLATERAMSTART_PTR != 0
-__attribute__((at(TEMPLATERAMSTART_PTR, "", CHIP_VER_ALL, FW_VER_ALL)))
-GenericPatch4(templateram_bin, templateram_bin);
+#if ((NEXMON_CHIP == CHIP_VER_BCM43455c0) && (NEXMON_FW_VERSION == FW_VER_7_45_154))
+char version[] = "7.45.154 (nexmon.org/sdr: " GIT_VERSION "-" BUILD_NUMBER ")";
 #endif
+char date[] = __DATE__;
+char time[] = __TIME__;
+
+__attribute__((at(0x1a2048, "", CHIP_VER_BCM43455c0, FW_VER_7_45_154)))
+GenericPatch4(version_patch, version);
+
+__attribute__((at(0x1a2054, "", CHIP_VER_BCM43455c0, FW_VER_7_45_154)))
+GenericPatch4(date_patch, date);
+
+__attribute__((at(0x1a2044, "", CHIP_VER_BCM43455c0, FW_VER_7_45_154)))
+GenericPatch4(time_patch, time);

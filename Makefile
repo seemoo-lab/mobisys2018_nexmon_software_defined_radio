@@ -2,7 +2,11 @@ GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 include ../version.mk
 include $(FW_PATH)/definitions.mk
 
+ifeq ($(TEMPLATERAMSTART_PTR), 0x0)
+LOCAL_SRCS=$(wildcard src/*.c) src/ucode_compressed.c
+else
 LOCAL_SRCS=$(wildcard src/*.c) src/ucode_compressed.c src/templateram.c
+endif
 COMMON_SRCS=$(wildcard $(NEXMON_ROOT)/patches/common/*.c)
 FW_SRCS=$(wildcard $(FW_PATH)/*.c)
 
@@ -27,6 +31,9 @@ CFLAGS= \
 	-fno-strict-aliasing \
 	-DNEXMON_CHIP=$(NEXMON_CHIP) \
 	-DNEXMON_FW_VERSION=$(NEXMON_FW_VERSION) \
+	-DWLC_UCODE_WRITE_BL_HOOK_ADDR=$(WLC_UCODE_WRITE_BL_HOOK_ADDR) \
+	-DHNDRTE_RECLAIM_0_END_PTR=$(HNDRTE_RECLAIM_0_END_PTR) \
+	-DTEMPLATERAMSTART_PTR=$(TEMPLATERAMSTART_PTR) \
 	-DPATCHSTART=$(PATCHSTART) \
 	-DUCODESIZE=$(UCODESIZE) \
 	-DGIT_VERSION=\"$(GIT_VERSION)\" \
@@ -37,7 +44,7 @@ CFLAGS= \
 	-Iinclude \
 	-I$(FW_PATH)
 
-all: fw_bcmdhd.bin
+all: $(RAM_FILE)
 
 init: FORCE
 	$(Q)if ! test -f BUILD_NUMBER; then echo 0 > BUILD_NUMBER; fi
@@ -74,7 +81,7 @@ gen/nexmon.ld: gen/nexmon2.pre $(OBJS)
 
 gen/nexmon.mk: gen/nexmon2.pre $(OBJS) $(FW_PATH)/definitions.mk
 	@printf "\033[0;31m  GENERATING MAKE FILE\033[0m gen/nexmon.pre => %s\n" $@
-	$(Q)printf "fw_bcmdhd.bin: gen/patch.elf FORCE\n" > $@
+	$(Q)printf "%s: gen/patch.elf FORCE\n" $(RAM_FILE) > $@
 	$(Q)sort gen/nexmon2.pre | \
 		gawk -v src_file=gen/patch.elf -f $(NEXMON_ROOT)/buildtools/scripts/nexmon.mk.1.awk | \
 		gawk -v ramstart=$(RAMSTART) -f $(NEXMON_ROOT)/buildtools/scripts/nexmon.mk.2.awk >> $@
@@ -97,7 +104,7 @@ gen/flashpatches.mk: gen/nexmon2.pre $(OBJS) $(FW_PATH)/definitions.mk
 		-v fp_config_base_ptr_2=$(FP_CONFIG_BASE_PTR_2) \
 		-v fp_config_end_ptr_2=$(FP_CONFIG_END_PTR_2) \
 		-v ramstart=$(RAMSTART) \
-		-v out_file=fw_bcmdhd.bin \
+		-v out_file=$(RAM_FILE) \
 		-v src_file=gen/patch.elf \
 		-f $(NEXMON_ROOT)/buildtools/scripts/flashpatches.mk.awk > $@
 
@@ -113,7 +120,7 @@ gen/patch.elf: patch.ld gen/nexmon.ld gen/flashpatches.ld gen/memory.ld $(OBJS)
 	@printf "\033[0;31m  LINKING OBJECTS\033[0m => %s (details: log/linker.log, log/linker.err)\n" $@
 	$(Q)$(CC)ld -T $< -o $@ --gc-sections --print-gc-sections -M >>log/linker.log 2>>log/linker.err
 
-fw_bcmdhd.bin: init gen/patch.elf $(FW_PATH)/$(RAM_FILE) gen/nexmon.mk gen/flashpatches.mk
+$(RAM_FILE): init gen/patch.elf $(FW_PATH)/$(RAM_FILE) gen/nexmon.mk gen/flashpatches.mk
 	$(Q)cp $(FW_PATH)/$(RAM_FILE) $@
 	@printf "\033[0;31m  APPLYING FLASHPATCHES\033[0m gen/flashpatches.mk => %s (details: log/flashpatches.log)\n" $@
 	$(Q)make -f gen/flashpatches.mk >>log/flashpatches.log 2>>log/flashpatches.log
@@ -169,7 +176,7 @@ ifndef NEXMON_SETUP_ENV
 	$(error run 'source setup_env.sh' first in the repository\'s root directory)
 endif
 
-install-firmware: fw_bcmdhd.bin
+install-firmware: $(RAM_FILE)
 	@printf "\033[0;31m  REMOUNTING /system\033[0m\n"
 	$(Q)adb $(ADBFLAGS) shell 'su -c "mount -o rw,remount /system"'
 	@printf "\033[0;31m  COPYING TO PHONE\033[0m %s => /sdcard/%s\n" $< $<
@@ -178,6 +185,25 @@ install-firmware: fw_bcmdhd.bin
 	$(Q)adb $(ADBFLAGS) shell 'su -c "rm /vendor/firmware/fw_bcmdhd.bin && cp /sdcard/fw_bcmdhd.bin /vendor/firmware/fw_bcmdhd.bin"'
 	@printf "\033[0;31m  RELOADING FIRMWARE\033[0m\n"
 	$(Q)adb $(ADBFLAGS) shell 'su -c "ifconfig wlan0 down && ifconfig wlan0 up"'
+
+install-rpi3plus: brcmfmac43455-sdio.bin
+ifeq ($(shell uname -m),$(filter $(shell uname -m), armv6l armv7l))
+	@printf "\033[0;31m  COPYING\033[0m brcmfmac43455-sdio.bin => /lib/firmware/brcm/brcmfmac43455-sdio.bin\n"
+	$(Q)cp brcmfmac43455-sdio.bin /lib/firmware/brcm/brcmfmac43455-sdio.bin
+ifeq ($(shell lsmod | grep "^brcmfmac" | wc -l), 1)
+	@printf "\033[0;31m  UNLOADING\033[0m brcmfmac\n"
+	$(Q)rmmod brcmfmac
+endif
+	$(Q)modprobe brcmutil
+	@printf "\033[0;31m  RELOADING\033[0m brcmfmac\n"
+ifeq ($(findstring 4.9,$(shell uname -r)),4.9)
+	$(Q)insmod ../nexmon/brcmfmac_4.9.y-nexmon/brcmfmac.ko
+else ifeq ($(findstring 4.14,$(shell uname -r)),4.14)
+	$(Q)insmod ../nexmon/brcmfmac_4.14.y-nexmon/brcmfmac.ko
+endif
+else
+	$(warning Warning: Cannot install firmware on this arch., bcm43430-sdio.bin needs to be copied manually into /lib/firmware/brcm/ on your RPI3)
+endif
 
 backup-firmware: FORCE
 	adb $(ADBFLAGS) shell 'su -c "cp /vendor/firmware/fw_bcmdhd.bin /sdcard/fw_bcmdhd.orig.bin"'
