@@ -4,8 +4,9 @@
 
 This projects demonstrates our discovery that turns Broadcom's 802.11ac Wi-Fi chips into
 software-defined radios that transmit arbitrary signals in the Wi-Fi bands. In this example,
-we patch the Wi-Fi firmware of BCM4339 devices installed in Nexus 5 smartphones. The firmware
-patch activates three ioctls:
+we patch the Wi-Fi firmware of BCM4339 devices installed in Nexus 5 smartphones and BCM43455c0
+devices installed in Raspberry Pi B3+ computers. The Raspberry Pi B3 will never be supported as
+it only contains an 802.11n PHY. The firmware patch activates three ioctls:
 
 1. `NEX_WRITE_TEMPLATE_RAM` (426) writes arbitrary data into Template RAM that stores the raw
    IQ samples that we may transmit. The ioctl's payload contains (1) an int32 value indicating
@@ -92,7 +93,8 @@ The following steps will get you started on Xubuntu 16.04 LTS:
     `git clone https://github.com/seemoo-lab/mobisys2018_nexmon_software_defined_radio.git`
 12. Enter the created subdirectory mobisys2018_nexmon_software_defined_radio and run 
     `make install-firmware` to compile our firmware patch and install it on the attached Nexus 5 
-    smartphone.
+    smartphone or run `make install-rpi3plus` to compile our firmware patch and install it on
+    a Raspberry Pi B3+.
 
 # References
 
