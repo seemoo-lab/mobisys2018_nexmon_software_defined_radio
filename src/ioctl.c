@@ -80,8 +80,11 @@
 #define PHYREF_SampleCollectPlayCtrl        u.d11acregs.SampleCollectPlayCtrl
 
 #define wreg32(r, v)        (*(volatile uint32*)(r) = (uint32)(v))
+#define rreg32(r)       (*(volatile uint32*)(r))
 #define wreg16(r, v)        (*(volatile uint16*)(r) = (uint16)(v))
+#define rreg16(r)       (*(volatile uint16*)(r))
 #define wreg8(r, v)     (*(volatile uint8*)(r) = (uint8)(v))
+#define rreg8(r)        (*(volatile uint8*)(r))
 
 #define BCM_REFERENCE(data) ((void)(data))
 
@@ -93,6 +96,17 @@
     case sizeof(uint32):    wreg32((void *)(r), (v)); break; \
     } \
 } while (0)
+
+#define R_REG(osh, r) ({ \
+    __typeof(*(r)) __osl_v; \
+    BCM_REFERENCE(osh); \
+    switch (sizeof(*(r))) { \
+    case sizeof(uint8): __osl_v = rreg8((void *)(r)); break; \
+    case sizeof(uint16):    __osl_v = rreg16((void *)(r)); break; \
+    case sizeof(uint32):    __osl_v = rreg32((void *)(r)); break; \
+    } \
+    __osl_v; \
+})
 
 static void
 exp_set_gains_by_index(struct phy_info *pi, int8 index)
@@ -215,6 +229,45 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
         {
             struct phy_info *pi = wlc->band->pi;
             wlc_phy_stopplayback_acphy(pi);
+            ret = IOCTL_SUCCESS;
+        }
+        break;
+
+    case 777:
+        {
+            uint32 tplramdump[16] = { 0xffffffff };
+            uint32 oldvalue = 0;
+            struct phy_info *pi = wlc->band->pi;
+            
+            set_scansuppress(wlc, 1);
+            set_mpc(wlc, 0);
+
+            wlc_phyreg_enter(pi);
+
+            int i = 0;
+
+            W_REG(pi->sh->osh, &pi->regs->tplatewrptr, 256*1024-5*4);
+            W_REG(pi->sh->osh, &pi->regs->tplatewrdata, 0xaabbeeff);
+            W_REG(pi->sh->osh, &pi->regs->tplatewrptr, 256*1024-1*4);
+            W_REG(pi->sh->osh, &pi->regs->tplatewrdata, 0xaabbeedd);
+            W_REG(pi->sh->osh, &pi->regs->tplatewrptr, 256*1024);
+            W_REG(pi->sh->osh, &pi->regs->tplatewrdata, 0xaabbeecc);
+
+            W_REG(pi->sh->osh, &pi->regs->tplatewrptr, 0);
+            for (i = 0; i < sizeof(tplramdump)/sizeof(tplramdump[0]); i++) {
+                tplramdump[i] = R_REG(pi->sh->osh, &pi->regs->tplatewrdata);
+            }
+            hexdump("xxx", tplramdump, sizeof(tplramdump));
+
+            W_REG(pi->sh->osh, &pi->regs->tplatewrptr, 256*1024-8*4);
+            for (i = 0; i < sizeof(tplramdump)/sizeof(tplramdump[0]); i++) {
+                tplramdump[i] = R_REG(pi->sh->osh, &pi->regs->tplatewrdata);
+            }
+            hexdump("xxx2", tplramdump, sizeof(tplramdump));
+            printf("\n");
+
+            wlc_phyreg_exit(pi);
+
             ret = IOCTL_SUCCESS;
         }
         break;
