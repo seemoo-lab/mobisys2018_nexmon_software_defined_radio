@@ -68,6 +68,8 @@
 
 #if ((NEXMON_CHIP == CHIP_VER_BCM43455c0) && (NEXMON_FW_VERSION == FW_VER_7_45_154))
 char version[] = "7.45.154 (nexmon.org/sdr: " GIT_VERSION "-" BUILD_NUMBER ")";
+#else
+char version[] = "(nexmon.org/sdr: " GIT_VERSION "-" BUILD_NUMBER ")";
 #endif
 char date[] = __DATE__;
 char time[] = __TIME__;
